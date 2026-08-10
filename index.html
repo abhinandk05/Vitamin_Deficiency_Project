@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeficiVision AI 2.0 | Clinical Biomarker Analyzer</title>
+    <meta name="description" content="Dual ResNet50 + Vision Transformer Deep Learning Suite for Visual Vitamin Deficiency Screening">
+    
+    <!-- Google Fonts & CSS -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <!-- Navbar -->
+    <header class="navbar">
+        <div class="nav-container">
+            <a href="#" class="brand-logo">
+                <div class="brand-icon">👁️</div>
+                <div>
+                    <div class="brand-name">DeficiVision AI</div>
+                    <span class="brand-tag">Version 2.0</span>
+                </div>
+            </a>
+            <ul class="nav-links">
+                <li><a href="#analyzer" class="nav-link active">Scanner</a></li>
+                <li><a href="#library" class="nav-link">Knowledge Hub</a></li>
+                <li><a href="#architecture" class="nav-link">AI Architecture</a></li>
+            </ul>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="main-content">
+
+        <!-- Hero Section -->
+        <section class="hero-section">
+            <div class="glass-panel hero-banner">
+                <div class="badge-group">
+                    <span class="status-badge">🧠 ResNet50 Active</span>
+                    <span class="status-badge" style="color:#38bdf8; border-color:rgba(56,189,248,0.3); background:rgba(56,189,248,0.15)">👁️ ViT-Base 16x16</span>
+                </div>
+                <h1 class="hero-heading">Clinical Vitamin Deficiency Analyzer</h1>
+                <p class="hero-subtext">Non-invasive deep learning screening suite combining Convolutional Neural Networks and Vision Transformers for visual biomarker classification.</p>
+                
+                <div class="hero-stats">
+                    <div class="stat-box">
+                        <div class="stat-val">6</div>
+                        <div class="stat-lbl">Target Deficiencies</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-val">Dual</div>
+                        <div class="stat-lbl">Ensemble Model</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-val">Soft-Vote</div>
+                        <div class="stat-lbl">Consensus Logic</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-val">PyTorch</div>
+                        <div class="stat-lbl">Inference Engine</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Analyzer Section -->
+        <section id="analyzer" class="analyzer-section">
+            <div class="analyzer-grid">
+                
+                <!-- Left Panel: Upload Input -->
+                <div class="glass-panel" style="padding: 24px;">
+                    <div class="panel-header">
+                        <h3>1. Biomarker Scan Subject</h3>
+                    </div>
+
+                    <div class="drop-zone" id="drop-zone">
+                        <span class="drop-icon">📸</span>
+                        <div class="drop-title">Drop clinical photo here or click to browse</div>
+                        <div class="drop-desc">Supports Eye, Lip, Tongue, Gums, Skin, or Hair photos (JPG, PNG, WebP)</div>
+                        <input type="file" id="file-input" class="file-input" accept="image/*">
+                    </div>
+
+                    <div class="sample-picker">
+                        <div class="sample-title">Quick Test Samples</div>
+                        <div class="sample-grid">
+                            <button class="sample-chip" onclick="loadSample('Eye')">👁️ Eye Sample</button>
+                            <button class="sample-chip" onclick="loadSample('Lip')">👄 Lip Sample</button>
+                            <button class="sample-chip" onclick="loadSample('Skin')">✋ Skin Sample</button>
+                        </div>
+                    </div>
+
+                    <div class="preview-box hidden" id="preview-box">
+                        <img src="" id="preview-img" class="preview-img" alt="Scan Subject">
+                        <div class="preview-overlay">
+                            <span>Status: Ready for classification</span>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary btn-block margin-top-sm" id="btn-analyze" disabled style="margin-top:20px;">
+                        ✨ Run Dual-Engine AI Scan
+                    </button>
+                </div>
+
+                <!-- Right Panel: Diagnostics Results -->
+                <div class="glass-panel" style="padding: 24px;">
+                    <div class="panel-header">
+                        <h3>2. AI Diagnostic Assessment</h3>
+                    </div>
+
+                    <div id="results-placeholder" style="text-align:center; padding: 60px 20px; color: var(--text-dim);">
+                        <span style="font-size:48px; display:block; margin-bottom:12px;">🔬</span>
+                        <p>Upload a symptom photo on the left to display model predictions and care plan.</p>
+                    </div>
+
+                    <div id="results-content" class="results-card hidden">
+                        <div class="res-header-box">
+                            <div>
+                                <div class="res-subtitle">Predicted Vitamin Deficiency</div>
+                                <div class="res-class-name" id="res-class">Vitamin A</div>
+                                <div class="res-subtitle" id="res-level">High Confidence</div>
+                            </div>
+                            <div class="gauge-box">
+                                <svg class="gauge-svg" viewBox="0 0 80 80">
+                                    <circle class="gauge-bg" cx="40" cy="40" r="36"></circle>
+                                    <circle class="gauge-fill" id="gauge-fill" cx="40" cy="40" r="36"></circle>
+                                </svg>
+                                <div class="gauge-text">
+                                    <span class="gauge-value" id="res-conf">92%</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="section-box">
+                            <h4 class="section-title">📊 Multi-Class Biomarker Probabilities</h4>
+                            <div class="prob-bars-list" id="prob-bars-list"></div>
+                        </div>
+
+                        <div class="section-box">
+                            <h4 class="section-title">🥗 Targeted Care Plan</h4>
+                            <div class="diet-grid" id="diet-grid"></div>
+                            <ul class="care-list" id="care-steps-list"></ul>
+                        </div>
+
+                        <button class="btn btn-outline btn-block" id="btn-consult">🩺 Schedule Doctor Consultation</button>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- Knowledge Library -->
+        <section id="library" style="margin-bottom: 48px;">
+            <div style="text-align:center; max-width:600px; margin:0 auto 28px;">
+                <h2 style="font-family:var(--font-heading); font-size:28px;">Vitamin Deficiency Reference Index</h2>
+                <p style="color:var(--text-muted); font-size:14px;">Clinical indicators and recommended dietary sources across all 6 target classes.</p>
+            </div>
+            <div class="library-grid" id="library-grid"></div>
+        </section>
+
+        <!-- Architecture Section -->
+        <section id="architecture" style="margin-bottom: 48px;">
+            <div class="glass-panel" style="padding: 32px;">
+                <h2 style="font-family:var(--font-heading); font-size:24px; margin-bottom:12px;">Hybrid CNN-Transformer Architecture</h2>
+                <p style="color:var(--text-muted); font-size:14px; line-height:1.6;">
+                    DeficiVision AI combines localized convolutional representations from <strong>ResNet50</strong> with global self-attention map tokens from <strong>Vision Transformer (vit_base_patch16_224)</strong> to provide robust, non-invasive biomarker assessment.
+                </p>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>⚠️ <strong>Medical Disclaimer:</strong> DeficiVision AI 2.0 is an educational AI demonstration and should never replace qualified clinical diagnosis.</p>
+    </footer>
+
+    <!-- Consultation Modal -->
+    <div class="modal-backdrop hidden" id="consult-modal">
+        <div class="modal-box glass-panel">
+            <div class="modal-header">
+                <h3>Schedule Clinical Advice</h3>
+                <button class="modal-close" id="btn-close-modal">✕</button>
+            </div>
+            <p style="font-size:13px; color:var(--text-muted); margin-bottom:16px;">Connect with a nutritionist or doctor to review your diagnostic results.</p>
+            <form onsubmit="event.preventDefault(); alert('Appointment request logged! A clinician will email you.'); document.getElementById('consult-modal').classList.add('hidden');">
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" class="form-input" required placeholder="Patient Name">
+                </div>
+                <div class="form-group">
+                    <label>Email Address</label>
+                    <input type="email" class="form-input" required placeholder="email@example.com">
+                </div>
+                <button type="submit" class="btn btn-primary btn-block margin-top-sm">Submit Request</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

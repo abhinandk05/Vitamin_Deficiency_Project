@@ -338,9 +338,30 @@ def generate_sample_image(label):
     
     return img
 
-# Initialize Session State History
+# Initialize Session State History & Diagnostic Cache
 if 'history' not in st.session_state:
     st.session_state.history = []
+
+def render_sidebar_diagnostics(target_placeholder, view_type, scan_data):
+    with target_placeholder.container():
+        if scan_data is None:
+            st.info("ℹ️ No active scan. Upload, capture, or select a sample image to view model consensus and probability metrics.")
+            return
+
+        if view_type in ["Model Consensus Breakdown", "Show Both Views"]:
+            with st.expander("⚖️ Model Consensus Breakdown", expanded=True):
+                st.markdown(f"**ResNet50 (CNN):** `{scan_data['cnn_pred']}` ({scan_data['cnn_conf']:.1f}%)")
+                st.progress(scan_data['cnn_conf'] / 100.0)
+                st.markdown(f"**Vision Transformer:** `{scan_data['vit_pred']}` ({scan_data['vit_conf']:.1f}%)")
+                st.progress(scan_data['vit_conf'] / 100.0)
+
+        if view_type in ["Full Deficiency Probability Map", "Show Both Views"]:
+            with st.expander("📊 Full Deficiency Probability Map", expanded=True):
+                for _, row in scan_data['prob_df'].iterrows():
+                    val = row['Ensemble Probability (%)']
+                    st.markdown(f"**{row['Deficiency Class']}**: {val:.1f}%")
+                    st.progress(min(val / 100.0, 1.0))
+                    st.caption(f"CNN: {row['ResNet50 (%)']:.1f}% | ViT: {row['ViT Transformer (%)']:.1f}%")
 
 # =====================================================================
 # 3. SIDEBAR & HERO HEADER
@@ -351,11 +372,20 @@ with st.sidebar:
     st.markdown("**Clinical Vision Analysis**")
     
     st.markdown("---")
-    st.markdown("### ⚙️ System Status")
-    st.markdown("🟢 **ResNet50 Model:** Ready")
-    st.markdown("🟢 **Vision Transformer:** Ready")
-    st.markdown("⚡ **Inference Hardware:** CPU Engine")
-    st.markdown("🎯 **Target Biomarkers:** 6 Classes")
+    st.markdown("### 🔬 Model Diagnostics")
+    breakdown_view = st.selectbox(
+        "Diagnostic View:",
+        [
+            "Model Consensus Breakdown",
+            "Full Deficiency Probability Map",
+            "Show Both Views"
+        ],
+        index=0,
+        help="Select which AI consensus and probability breakdown to display"
+    )
+    
+    sidebar_diag_placeholder = st.empty()
+    render_sidebar_diagnostics(sidebar_diag_placeholder, breakdown_view, st.session_state.get('latest_scan_data'))
     
     st.markdown("---")
     st.markdown("### 📑 Clinical Guidance")
@@ -377,10 +407,9 @@ st.markdown("""
 # =====================================================================
 # 4. TABBED INTERFACE LAYOUT
 # =====================================================================
-tab_scanner, tab_knowledge, tab_architecture, tab_history = st.tabs([
+tab_scanner, tab_knowledge, tab_history = st.tabs([
     "🔬 Diagnostic Scanner",
     "📚 Vitamin Knowledge Hub",
-    "🧠 AI Ensemble Architecture",
     "📋 Session Diagnostic Log"
 ])
 
@@ -463,13 +492,37 @@ with tab_scanner:
                     cnn_pred_idx = torch.argmax(cnn_probs).item()
                     vit_pred_idx = torch.argmax(vit_probs).item()
 
-            # Record session history
-            st.session_state.history.append({
-                'class': predicted_class,
-                'confidence': f"{confidence_pct:.1f}%",
-                'resnet_pred': CLASSES[cnn_pred_idx],
-                'vit_pred': CLASSES[vit_pred_idx]
-            })
+            cnn_top_conf = cnn_probs[cnn_pred_idx].item() * 100
+            vit_top_conf = vit_probs[vit_pred_idx].item() * 100
+
+            prob_df = pd.DataFrame({
+                'Deficiency Class': CLASSES,
+                'Ensemble Probability (%)': [hybrid_probs[i].item() * 100 for i in range(6)],
+                'ResNet50 (%)': [cnn_probs[i].item() * 100 for i in range(6)],
+                'ViT Transformer (%)': [vit_probs[i].item() * 100 for i in range(6)]
+            }).sort_values(by='Ensemble Probability (%)', ascending=False)
+
+            # Store latest scan metrics for the sidebar diagnostics dropdown
+            st.session_state['latest_scan_data'] = {
+                'cnn_pred': CLASSES[cnn_pred_idx],
+                'cnn_conf': cnn_top_conf,
+                'vit_pred': CLASSES[vit_pred_idx],
+                'vit_conf': vit_top_conf,
+                'prob_df': prob_df
+            }
+            # Immediately update sidebar dropdown view with current scan
+            render_sidebar_diagnostics(sidebar_diag_placeholder, breakdown_view, st.session_state['latest_scan_data'])
+
+            # Record session history (with duplicate guard for reruns)
+            scan_sig = (predicted_class, f"{confidence_pct:.1f}%", CLASSES[cnn_pred_idx], CLASSES[vit_pred_idx])
+            if st.session_state.get('last_scan_sig') != scan_sig:
+                st.session_state.history.append({
+                    'class': predicted_class,
+                    'confidence': f"{confidence_pct:.1f}%",
+                    'resnet_pred': CLASSES[cnn_pred_idx],
+                    'vit_pred': CLASSES[vit_pred_idx]
+                })
+                st.session_state['last_scan_sig'] = scan_sig
 
             # Primary Prediction Cards
             mcol1, mcol2 = st.columns(2)
@@ -493,40 +546,6 @@ with tab_scanner:
                     <div style="color: {conf_color}; font-size: 12px; font-weight:600; margin-top:4px;">{conf_tag}</div>
                 </div>
                 """, unsafe_allow_html=True)
-
-            st.markdown("<br>", unsafe_allow_html=True)
-            
-            # Side-by-Side Model Agreement Breakdown
-            st.markdown("#### Model Consensus Breakdown")
-            ccol1, ccol2 = st.columns(2)
-            with ccol1:
-                cnn_top_conf = cnn_probs[cnn_pred_idx].item() * 100
-                st.markdown(f"**ResNet50 (CNN):** `{CLASSES[cnn_pred_idx]}` ({cnn_top_conf:.1f}%)")
-                st.progress(cnn_top_conf / 100.0)
-            with ccol2:
-                vit_top_conf = vit_probs[vit_pred_idx].item() * 100
-                st.markdown(f"**Vision Transformer:** `{CLASSES[vit_pred_idx]}` ({vit_top_conf:.1f}%)")
-                st.progress(vit_top_conf / 100.0)
-
-            # Full Probability Distribution Breakdown
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.markdown("#### Full Deficiency Probability Map")
-            
-            prob_df = pd.DataFrame({
-                'Deficiency Class': CLASSES,
-                'Ensemble Probability (%)': [hybrid_probs[i].item() * 100 for i in range(6)],
-                'ResNet50 (%)': [cnn_probs[i].item() * 100 for i in range(6)],
-                'ViT Transformer (%)': [vit_probs[i].item() * 100 for i in range(6)]
-            }).sort_values(by='Ensemble Probability (%)', ascending=False)
-            
-            for index, row in prob_df.iterrows():
-                val = row['Ensemble Probability (%)']
-                col_name, col_bar = st.columns([1.5, 3])
-                with col_name:
-                    st.markdown(f"**{row['Deficiency Class']}**")
-                with col_bar:
-                    st.progress(min(val / 100.0, 1.0))
-                    st.caption(f"Ensemble: {val:.1f}% | CNN: {row['ResNet50 (%)']:.1f}% | ViT: {row['ViT Transformer (%)']:.1f}%")
 
             # Targeted Care Plan
             st.markdown("---")
@@ -605,52 +624,7 @@ with tab_knowledge:
             """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------------------
-# TAB 3: AI ARCHITECTURE
-# ---------------------------------------------------------------------
-with tab_architecture:
-    st.subheader("Hybrid ResNet50 + Vision Transformer Ensemble")
-    st.markdown("""
-    DeficiVision AI 2.0 fuses two complementary deep learning paradigms to maximize visual feature detection across diverse lighting, dermal tones, and camera resolution conditions.
-    """)
-    
-    acol1, acol2, acol3 = st.columns(3)
-    with acol1:
-        st.markdown("""
-        <div class="metric-card">
-            <h4>🧠 ResNet50 (CNN)</h4>
-            <p style="font-size:13px; color:#94a3b8;">Extracts local high-frequency spatial gradients, skin textures, micro-lesions, and edge features via residual convolutional blocks.</p>
-        </div>
-        """, unsafe_allow_html=True)
-    with acol2:
-        st.markdown("""
-        <div class="metric-card">
-            <h4>👁️ ViT-Base (Transformer)</h4>
-            <p style="font-size:13px; color:#94a3b8;">Splits input images into 16x16 patch tokens and calculates global multi-head self-attention across the full anatomical field.</p>
-        </div>
-        """, unsafe_allow_html=True)
-    with acol3:
-        st.markdown("""
-        <div class="metric-card">
-            <h4>⚖️ Soft-Voting Fusion</h4>
-            <p style="font-size:13px; color:#94a3b8;">Combines model posterior probabilities to reduce variance and eliminate false positive classifications.</p>
-        </div>
-        """, unsafe_allow_html=True)
-
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown("#### Simulated Model Training History")
-    
-    epochs = list(range(1, 11))
-    history_df = pd.DataFrame({
-        'Epoch': epochs,
-        'ResNet50 Accuracy': [0.68, 0.74, 0.79, 0.82, 0.85, 0.87, 0.89, 0.90, 0.92, 0.93],
-        'ViT Transformer Accuracy': [0.65, 0.72, 0.78, 0.83, 0.86, 0.89, 0.91, 0.93, 0.94, 0.95],
-        'Hybrid Ensemble Accuracy': [0.72, 0.78, 0.84, 0.88, 0.91, 0.93, 0.95, 0.96, 0.97, 0.98]
-    }).set_index('Epoch')
-    
-    st.line_chart(history_df, height=300)
-
-# ---------------------------------------------------------------------
-# TAB 4: SESSION HISTORY
+# TAB 3: SESSION HISTORY
 # ---------------------------------------------------------------------
 with tab_history:
     st.subheader("Session Diagnostic Audit Log")
@@ -659,6 +633,7 @@ with tab_history:
         st.dataframe(h_df, use_container_width=True)
         if st.button("🗑️ Clear History Log"):
             st.session_state.history = []
+            st.session_state.pop('last_scan_sig', None)
             st.rerun()
     else:
         st.info("No scans recorded in current session. Perform a scan in the Diagnostic Scanner tab.")

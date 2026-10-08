@@ -316,28 +316,6 @@ preprocess = transforms.Compose([
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 ])
 
-# Helper function to generate high quality sample images if user clicks "Try Sample"
-def generate_sample_image(label):
-    img = Image.new('RGB', (400, 400), color=(30, 41, 59))
-    draw = ImageDraw.Draw(img)
-    
-    # Draw clinical aesthetic illustration shapes
-    colors = {
-        'Eye Biomarker (Vit A)': ((16, 185, 129), '👁️'),
-        'Lip / Mouth Corner (Vit B2)': ((244, 63, 94), '👄'),
-        'Skin Rash / Lesion (Vit B3)': ((245, 158, 11), '✋'),
-        'Hair & Scalp Condition (Vit B7)': ((168, 85, 247), '💇'),
-        'Pale Tongue Sign (Vit B12)': ((236, 72, 153), '👅'),
-        'Gums / Vascular (Vit C)': ((14, 165, 233), '🪥')
-    }
-    
-    col, emoji = colors.get(label, ((16, 185, 129), '🔬'))
-    
-    draw.ellipse([80, 80, 320, 320], fill=col[0], outline=(255, 255, 255), width=4)
-    draw.ellipse([140, 140, 260, 260], fill=(15, 23, 42))
-    
-    return img
-
 # Initialize Session State History & Diagnostic Cache
 if 'history' not in st.session_state:
     st.session_state.history = []
@@ -345,7 +323,7 @@ if 'history' not in st.session_state:
 def render_sidebar_diagnostics(target_placeholder, view_type, scan_data):
     with target_placeholder.container():
         if scan_data is None:
-            st.info("ℹ️ No active scan. Upload, capture, or select a sample image to view model consensus and probability metrics.")
+            st.info("ℹ️ No active scan. Upload a photo in the scanner to view model consensus and probability metrics.")
             return
 
         if view_type in ["Model Consensus Breakdown", "Show Both Views"]:
@@ -422,45 +400,14 @@ with tab_scanner:
     with col_input:
         st.subheader("1. Input Feature Biomarker")
         
-        input_mode = st.radio(
-            "Select Input Source:",
-            ["📁 Upload Photo", "📸 Live Camera Stream", "🧪 Test Sample Images"],
-            horizontal=True
+        uploaded_file = st.file_uploader(
+            "Upload a high-resolution photo of Eye, Lips, Tongue, Gums, Skin, or Hair:",
+            type=["jpg", "jpeg", "png", "webp"]
         )
         
         selected_image = None
-        
-        if input_mode == "📁 Upload Photo":
-            uploaded_file = st.file_uploader(
-                "Upload a high-resolution photo of Eye, Lips, Tongue, Gums, Skin, or Hair:",
-                type=["jpg", "jpeg", "png", "webp"]
-            )
-            if uploaded_file is not None:
-                selected_image = Image.open(uploaded_file).convert('RGB')
-                
-        elif input_mode == "📸 Live Camera Stream":
-            camera_file = st.camera_input("Capture clinical symptom photo:")
-            if camera_file is not None:
-                selected_image = Image.open(camera_file).convert('RGB')
-                
-        elif input_mode == "🧪 Test Sample Images":
-            sample_choice = st.selectbox(
-                "Choose a simulated clinical sample:",
-                [
-                    'Eye Biomarker (Vit A)',
-                    'Lip / Mouth Corner (Vit B2)',
-                    'Skin Rash / Lesion (Vit B3)',
-                    'Hair & Scalp Condition (Vit B7)',
-                    'Pale Tongue Sign (Vit B12)',
-                    'Gums / Vascular (Vit C)'
-                ]
-            )
-            if st.button("Load Selected Sample"):
-                selected_image = generate_sample_image(sample_choice)
-                st.session_state['active_sample'] = selected_image
-
-            if 'active_sample' in st.session_state and selected_image is None:
-                selected_image = st.session_state['active_sample']
+        if uploaded_file is not None:
+            selected_image = Image.open(uploaded_file).convert('RGB')
 
         if selected_image is not None:
             st.markdown("#### Sample Preview")

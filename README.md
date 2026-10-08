@@ -43,6 +43,6 @@ Download cnn_vitamin_model.pth here: https://drive.google.com/file/d/1GXDhdwP2Xm
 Download vit_vitamin_model.pth here: https://drive.google.com/file/d/1vHg0QHWgEJJujWsEpD50mdKe5MxpxCHr/view
 
 4. Run the Application
-streamlit run app.py
+python -m streamlit run app.py
 
 
